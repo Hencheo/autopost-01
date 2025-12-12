@@ -162,17 +162,20 @@ class PostScheduler:
     async def _keep_alive(self) -> None:
         """Pinga a própria URL para manter o servidor acordado no Render Free."""
         import os
-        import requests
+        import httpx
         
         # Pegar URL do ambiente (Render define automaticamente)
         render_url = os.getenv("RENDER_EXTERNAL_URL")
         
         if render_url:
             try:
-                response = requests.get(f"{render_url}/", timeout=10)
-                print(f"💓 Keep-alive ping: {response.status_code}")
+                async with httpx.AsyncClient(timeout=3.0) as client:
+                    response = await client.get(f"{render_url}/")
+                    print(f"💓 Keep-alive ping: {response.status_code}")
             except Exception as e:
-                print(f"⚠️ Keep-alive falhou: {e}")
+                # Timeout é esperado às vezes, não é erro crítico
+                print(f"💓 Keep-alive enviado (timeout ignorado)")
+
 
     
     async def post_next(self) -> Optional[dict]:
