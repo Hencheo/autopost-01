@@ -94,6 +94,15 @@ class PostScheduler:
             replace_existing=True
         )
         
+        # Keep-alive para evitar que o Render Free durma (a cada 10 min)
+        self._scheduler.add_job(
+            self._keep_alive,
+            trigger=CronTrigger(minute="*/10", timezone=self._timezone),
+            id="keep_alive",
+            name="Keep Alive",
+            replace_existing=True
+        )
+        
         # Iniciar scheduler
         self._scheduler.start()
         self._running = True
@@ -149,6 +158,22 @@ class PostScheduler:
                 
         except Exception as e:
             print(f"⚠️ Erro no sync do Drive: {e}")
+    
+    async def _keep_alive(self) -> None:
+        """Pinga a própria URL para manter o servidor acordado no Render Free."""
+        import os
+        import requests
+        
+        # Pegar URL do ambiente (Render define automaticamente)
+        render_url = os.getenv("RENDER_EXTERNAL_URL")
+        
+        if render_url:
+            try:
+                response = requests.get(f"{render_url}/", timeout=10)
+                print(f"💓 Keep-alive ping: {response.status_code}")
+            except Exception as e:
+                print(f"⚠️ Keep-alive falhou: {e}")
+
     
     async def post_next(self) -> Optional[dict]:
         """

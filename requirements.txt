@@ -32,3 +32,4 @@ pydantic-settings>=2.1.0
 # Utilidades
 httpx>=0.25.0
 aiofiles>=23.2.0
+requests>=2.31.0
