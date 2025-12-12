@@ -94,10 +94,10 @@ class PostScheduler:
             replace_existing=True
         )
         
-        # Keep-alive para evitar que o Render Free durma (a cada 10 min)
+        # Keep-alive para evitar que o Render Free durma (a cada 5 min)
         self._scheduler.add_job(
             self._keep_alive,
-            trigger=CronTrigger(minute="*/10", timezone=self._timezone),
+            trigger=CronTrigger(minute="*/5", timezone=self._timezone),
             id="keep_alive",
             name="Keep Alive",
             replace_existing=True
