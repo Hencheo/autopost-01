@@ -110,6 +110,10 @@ class PostScheduler:
         # Atualizar estado
         self._state.set_scheduler_enabled(True)
         
+        # Executar keep-alive IMEDIATAMENTE ao iniciar
+        import asyncio
+        asyncio.create_task(self._keep_alive())
+        
         next_slot = self._time_manager.format_next_slot()
         print(f"✅ Scheduler iniciado! Próximo post: {next_slot}")
     
@@ -160,21 +164,23 @@ class PostScheduler:
             print(f"⚠️ Erro no sync do Drive: {e}")
     
     async def _keep_alive(self) -> None:
-        """Pinga a própria URL para manter o servidor acordado no Render Free."""
+        """Mantém o servidor acordado no Render Free."""
         import os
-        import httpx
+        from datetime import datetime
         
-        # Pegar URL do ambiente (Render define automaticamente)
+        # Log simples para mostrar que está vivo
+        now = datetime.now().strftime("%H:%M:%S")
+        print(f"💓 Keep-alive: servidor ativo às {now}")
+        
+        # Tentar ping apenas se tiver URL configurada
         render_url = os.getenv("RENDER_EXTERNAL_URL")
-        
         if render_url:
             try:
-                async with httpx.AsyncClient(timeout=3.0) as client:
-                    response = await client.get(f"{render_url}/")
-                    print(f"💓 Keep-alive ping: {response.status_code}")
-            except Exception as e:
-                # Timeout é esperado às vezes, não é erro crítico
-                print(f"💓 Keep-alive enviado (timeout ignorado)")
+                import urllib.request
+                urllib.request.urlopen(f"{render_url}/", timeout=5)
+            except Exception:
+                pass  # Ignora erros - o log acima já prova que está vivo
+
 
 
     
