@@ -1,0 +1,12 @@
+{
+  "scheduler_enabled": true,
+  "post_times": [
+    "09:00",
+    "15:00",
+    "21:00"
+  ],
+  "last_post_time": null,
+  "next_post_time": null,
+  "posts_today": 0,
+  "last_updated": "2025-12-12T04:03:35.111865"
+}

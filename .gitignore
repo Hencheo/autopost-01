@@ -1,0 +1,34 @@
+# Ignorar credenciais e dados sensíveis
+.env
+googlecredentials.json
+data/credentials/
+data/session.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Pastas de conteúdo processado
+content/posts/*/processed/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
