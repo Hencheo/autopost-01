@@ -80,7 +80,11 @@ class PostScheduler:
                 trigger=trigger,
                 id=f"post_{time_str}",
                 name=f"Post às {time_str}",
-                replace_existing=True
+                replace_existing=True,
+                # Permite executar posts mesmo se foram "perdidos" por até 15 minutos
+                # (útil quando servidor reinicia exatamente no horário do post)
+                misfire_grace_time=900,  # 15 minutos em segundos
+                coalesce=True  # Se múltiplos misfires, executa apenas uma vez
             )
             
             print(f"📅 Agendado: Post às {time_str}")
