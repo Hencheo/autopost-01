@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from .client import get_instagram_client, InstagramClient
-from .auth import humanized_delay
+from .auth import humanized_delay, with_session_retry
 from ..core.exceptions import PostError
 from ..core.constants import MAX_CAROUSEL_IMAGES, MAX_STORIES
 
@@ -37,6 +37,7 @@ class InstagramPoster:
         if not self._instagram.is_logged_in():
             self._instagram.login()
     
+    @with_session_retry(max_retries=2)
     def post_carousel(self, images: List[Path], caption: str) -> dict:
         """
         Posta um carrossel (álbum) de imagens.
@@ -98,6 +99,7 @@ class InstagramPoster:
         except Exception as e:
             raise PostError(f"Erro ao postar carrossel: {e}")
     
+    @with_session_retry(max_retries=2)
     def post_story(self, images: List[Path]) -> List[dict]:
         """
         Posta uma ou mais imagens como Story.
@@ -143,6 +145,7 @@ class InstagramPoster:
         
         return results
     
+    @with_session_retry(max_retries=2)
     def post_single(self, image: Path, caption: str) -> dict:
         """
         Posta uma única imagem.

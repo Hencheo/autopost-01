@@ -7,13 +7,14 @@ Gerencia a conexão única com o Instagram usando instagrapi.
 from typing import Optional
 from instagrapi import Client
 
-from ..core.config import get_config, Config
+from ..core.config import get_config, reload_config, Config
 from ..core.exceptions import LoginError, InstagramError
 from .auth import (
     SessionManager,
     apply_session_hijack,
     humanized_delay,
-    post_login_delay
+    post_login_delay,
+    with_session_retry
 )
 
 
@@ -187,6 +188,42 @@ class InstagramClient:
                 pass
             self._logged_in = False
             print("👋 Logout realizado.")
+    
+    def force_relogin(self) -> bool:
+        """
+        Força um novo login, invalidando a sessão atual.
+        
+        Usado quando a sessão expira durante uma operação.
+        
+        Returns:
+            True se o re-login foi bem-sucedido.
+        """
+        print("🔄 Forçando re-login...")
+        
+        # Resetar estado
+        self._logged_in = False
+        
+        # Recarregar configuração (caso session_id tenha sido atualizado)
+        self._config = reload_config()
+        
+        # Limpar sessão antiga
+        self._session_manager.clear_session()
+        
+        # Criar novo cliente para evitar estado corrompido
+        self._client = Client()
+        self._client.delay_range = [2, 5]
+        
+        # Tentar login novamente
+        return self.login(force=True)
+    
+    def reset_session_state(self) -> None:
+        """
+        Reseta apenas o estado de login sem limpar sessão.
+        
+        Útil quando você sabe que a sessão expirou.
+        """
+        self._logged_in = False
+        print("⚠️ Estado de sessão resetado")
     
     def is_logged_in(self) -> bool:
         """

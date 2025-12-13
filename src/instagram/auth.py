@@ -7,13 +7,91 @@ Gerencia login, sessão persistente e session hijacking.
 import json
 import random
 import time
+import functools
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Callable, TypeVar, Any
 from instagrapi import Client
+from instagrapi.exceptions import LoginRequired, ClientError, ClientLoginRequired
 
 from ..core.config import get_config
 from ..core.exceptions import LoginError
 from ..core.constants import POST_LOGIN_DELAY, MIN_ACTION_DELAY, MAX_ACTION_DELAY
+
+
+# Type variable para preservar tipo de retorno
+T = TypeVar('T')
+
+
+def with_session_retry(max_retries: int = 2) -> Callable:
+    """
+    Decorator que adiciona retry automático quando a sessão expira.
+    
+    Detecta erros de LoginRequired/ClientLoginRequired e força
+    re-autenticação automática.
+    
+    Args:
+        max_retries: Número máximo de tentativas de re-login.
+        
+    Returns:
+        Função decorada com retry automático.
+    """
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs) -> T:
+            last_error = None
+            
+            for attempt in range(max_retries + 1):
+                try:
+                    return func(self, *args, **kwargs)
+                    
+                except (LoginRequired, ClientLoginRequired, ClientError) as e:
+                    error_msg = str(e).lower()
+                    
+                    # Verificar se é erro de autenticação
+                    is_auth_error = (
+                        isinstance(e, (LoginRequired, ClientLoginRequired)) or
+                        'login_required' in error_msg or
+                        'challenge_required' in error_msg or
+                        'checkpoint_required' in error_msg or
+                        'session' in error_msg
+                    )
+                    
+                    if not is_auth_error:
+                        # Não é erro de autenticação, propagar
+                        raise
+                    
+                    last_error = e
+                    
+                    if attempt < max_retries:
+                        print(f"⚠️ Sessão expirada (tentativa {attempt + 1}/{max_retries}). Re-autenticando...")
+                        
+                        # Forçar re-login
+                        try:
+                            # Acessar o cliente do Instagram
+                            if hasattr(self, '_instagram'):
+                                self._instagram.force_relogin()
+                            elif hasattr(self, 'force_relogin'):
+                                self.force_relogin()
+                            else:
+                                print("❌ Não foi possível encontrar método de re-login")
+                                raise
+                                
+                            print("✅ Re-autenticação bem-sucedida. Tentando novamente...")
+                            humanized_delay(2, 4)  # Delay antes de retry
+                            
+                        except Exception as relogin_error:
+                            print(f"❌ Falha no re-login: {relogin_error}")
+                            raise LoginError(f"Não foi possível re-autenticar: {relogin_error}")
+                    else:
+                        print(f"❌ Todas as tentativas de retry falharam")
+                        raise LoginError(f"Sessão expirada após {max_retries} tentativas: {last_error}")
+            
+            # Não deveria chegar aqui, mas por segurança
+            if last_error:
+                raise last_error
+                
+        return wrapper
+    return decorator
 
 
 class SessionManager:
