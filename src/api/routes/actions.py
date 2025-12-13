@@ -106,3 +106,52 @@ async def move_to_front(request: PostFolderRequest):
         return {"success": True, "message": f"{request.folder_name} movido para frente"}
     else:
         raise HTTPException(status_code=404, detail="Pasta não encontrada na fila")
+
+
+@router.post("/test-login")
+async def test_login():
+    """Testa o login no Instagram (força re-autenticação)."""
+    try:
+        from ...instagram.client import get_instagram_client
+        
+        client = get_instagram_client()
+        
+        # Forçar re-login para testar credenciais
+        client.force_relogin()
+        
+        # Verificar se está logado
+        if client.is_logged_in():
+            username = client.get_username()
+            return {
+                "success": True, 
+                "message": f"Login bem-sucedido como @{username}",
+                "username": username
+            }
+        else:
+            return {"success": False, "message": "Login falhou"}
+            
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro no login: {str(e)}")
+
+
+@router.post("/clear-session")
+async def clear_session():
+    """Limpa a sessão salva do Instagram (força novo login no próximo uso)."""
+    try:
+        from ...instagram.auth import SessionManager
+        
+        session_manager = SessionManager()
+        session_manager.clear_session()
+        
+        # Também resetar o estado do cliente singleton
+        from ...instagram.client import get_instagram_client
+        client = get_instagram_client()
+        client.reset_session_state()
+        
+        return {
+            "success": True, 
+            "message": "Sessão limpa. Próximo login usará credenciais fresh."
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro ao limpar sessão: {str(e)}")
