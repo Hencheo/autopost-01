@@ -62,8 +62,8 @@ class InstagramClient:
         """
         Realiza login no Instagram.
         
-        Prioriza session hijacking se INSTAGRAM_SESSION_ID estiver configurado.
-        Caso contrário, usa username/password.
+        Prioriza username/password (mais estável para servidores).
+        Session hijacking é usado apenas se credenciais não estiverem configuradas.
         
         Args:
             force: Se True, força novo login mesmo se já logado.
@@ -79,17 +79,26 @@ class InstagramClient:
             return True
         
         try:
-            # Prioridade 1: Session Hijacking
-            if self._config.instagram_session_id:
-                return self._login_with_session()
-            
-            # Prioridade 2: Username/Password com sessão salva
-            if self._session_manager.has_session():
+            # Prioridade 1: Sessão salva (evita múltiplos logins)
+            if self._session_manager.has_session() and not force:
                 if self._try_relogin():
                     return True
+                print("⚠️ Sessão salva inválida, tentando login fresh...")
             
-            # Prioridade 3: Login normal
-            return self._login_with_credentials()
+            # Prioridade 2: Username/Password (mais confiável para servidores)
+            if self._config.instagram_username and self._config.instagram_password:
+                print("🔑 Usando login com username/password...")
+                return self._login_with_credentials()
+            
+            # Prioridade 3: Session Hijacking (fallback)
+            if self._config.instagram_session_id:
+                print("🔐 Usando session hijacking como fallback...")
+                return self._login_with_session()
+            
+            raise LoginError(
+                "Nenhum método de login configurado. "
+                "Configure INSTAGRAM_USERNAME/PASSWORD ou INSTAGRAM_SESSION_ID."
+            )
             
         except Exception as e:
             raise LoginError(f"Falha no login: {e}")
